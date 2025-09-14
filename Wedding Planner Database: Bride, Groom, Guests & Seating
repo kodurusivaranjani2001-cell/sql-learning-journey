@@ -1,0 +1,168 @@
+create database if not exists wedding;
+use wedding;
+
+create table bride(girl_id int  primary key,
+                  girl_name varchar(20),girl_budget int );
+
+create table groom(boy_id int primary key,
+                  boy_name varchar(10),
+                  boy_budget int);
+
+create table guest_invitations(guest_id int auto_increment primary key,
+                              girl_id int,
+                              boy_id int,
+                              status varchar(20),
+                              gender varchar(10),
+                              age int,
+                              attendance_type varchar (20),
+                              foreign key(girl_id) references bride(girl_id),
+                              foreign key(boy_id) references groom(boy_id));
+
+create table marriagehall(chair_id int auto_increment primary key,
+                          guest_id int,totall_chairs int ,
+                          foreign key(guest_id) references guest_invitations(guest_id));
+
+insert into bride(girl_id,girl_name,girl_budget) values
+(1,'sita',500000);
+insert into groom(boy_id,boy_name,boy_budget) values 
+(1,'ram',1000000);
+
+insert  into guest_invitations 
+(girl_id, boy_id, status, gender, age, attendance_type) 
+values
+-- Bride’s side only (willing)
+(1, NULL, 'willing', 'Female', 23, 'Single'),
+(1, NULL, 'willing', 'Male', 25, 'With Family'),
+(1, NULL, 'willing', 'Female', 22, 'Pair'),
+
+-- Bride’s side only (not willing)
+(1, NULL, 'not willing', NULL, NULL, NULL),
+(1, NULL, 'not willing', NULL, NULL, NULL),
+
+-- Groom’s side only (willing)
+(NULL, 1, 'willing', 'Male', 28, 'Single'),
+(NULL, 1, 'willing', 'Female', 30, 'With Family'),
+(NULL, 1, 'willing', 'Male', 26, 'Pair'),
+
+-- Groom’s side only (not willing)
+(NULL, 1, 'not willing', NULL, NULL, NULL),
+(NULL, 1, 'not willing', NULL, NULL, NULL),
+
+-- Both invited (willing, male guests)
+(1, 1, 'willing', 'Male', 29, 'Single'),
+(1, 1, 'willing', 'Male', 31, 'With Family'),
+(1, 1, 'willing', 'Male', 27, 'Pair'),
+
+-- Both invited (willing, female guests)
+(1, 1, 'willing', 'Female', 26, 'Single'),
+(1, 1, 'willing', 'Female', 24, 'With Family'),
+(1, 1, 'willing', 'Female', 28, 'Pair'),
+
+-- Both invited (not willing)
+(1, 1, 'not willing', NULL, NULL, NULL),
+(1, 1, 'not willing', NULL, NULL, NULL),
+
+-- More bride’s side (willing)
+(1, NULL, 'willing', 'Female', 27, 'With Family'),
+(1, NULL, 'willing', 'Male', 30, 'Single'),
+
+-- More groom’s side (willing)
+(NULL, 1, 'willing', 'Male', 32, 'With Family'),
+(NULL, 1, 'willing', 'Female', 29, 'Pair'),
+
+-- More both sides (willing, mixed genders)
+(1, 1, 'willing', 'Male', 33, 'With Family'),
+(1, 1, 'willing', 'Female', 25, 'Single'),
+(1, 1, 'willing', 'Male', 34, 'Pair'),
+
+-- More both sides (not willing)
+(1, 1, 'not willing', NULL, NULL, NULL),
+(1, 1, 'not willing', NULL, NULL, NULL),
+
+-- Bride’s side again (not willing)
+(1, NULL, 'not willing', NULL, NULL, NULL),
+(1, NULL, 'not willing', NULL, NULL, NULL),
+
+-- Groom’s side again (not willing)
+(NULL, 1, 'not willing', NULL, NULL, NULL),
+(NULL, 1, 'not willing', NULL, NULL, NULL);
+
+insert into marriagehall(guest_id,totall_chairs) values 
+(1,100),(7,100),(2,100),(3,100),(14,100),(11,100),(10,100),(22,100)
+,(16,100),(12,100),(6,100),(9,100),(30,100),(15,100),(4,100),(9,100);
+
+create table gifts (gift_id int auto_increment primary key,
+                    guest_id int,gift_type varchar(20),
+                    foreign key(guest_id) references marriagehall(chair_id));
+
+insert into gifts (guest_id,gift_type) values (1,'gift box'),
+(3,'money voucher'),(2,'money vocher'),(4,'gold'),(7,'silver'),(9,'gift box'),
+(12,'gift box'),(6,'null'),(5,'money'),(14,'money'),(8,'silver'),(10,'gold');
+
+select age , count(*) as total_guests
+from guest_invitations
+group by age 
+order by age desc;
+
+select max(age)
+from guest_invitations ;
+
+select  gender,age
+from guest_invitations
+where gender is not null
+ and age is not null 
+order by gender ,age desc;
+
+select gi.attendance_type,  mh.guest_id
+from marriagehall mh
+join guest_invitations gi
+ON mh.guest_id = gi.guest_id
+where gi.attendance_type like '%pair%';
+
+select gender ,age,
+rank() over(partition by gender  order by age) as age_rank
+from guest_invitations
+where gender is not null
+and age is not null;
+
+select 
+gi.gender,count(*) as guest_count
+from marriagehall mh
+join guest_invitations gi
+on mh.guest_id=gi.guest_id
+where gi.gender is not null
+group by gi.gender
+with rollup; # give totall
+
+select 
+case 
+when gi.girl_id is not null then 'girl side'
+when gi.boy_id is not null then 'boy side'
+else 'both sides'
+end as invited_by_side,
+count(*) as guest_count
+from marriagehall mh
+join guest_invitations gi
+on mh.guest_id=gi.guest_id
+group by invited_by_side
+with rollup;
+
+select gift_type,count(*) as samegifts
+from gifts
+group by gift_type
+with rollup ;
+
+select gift_type,count(*) as total_gold, guest_id
+from gifts g 
+where gift_type like '%gold%'
+group by gift_type , guest_id;
+
+select sum(chair_id) as used_chairs
+from marriagehall;
+
+
+
+
+
+
+
