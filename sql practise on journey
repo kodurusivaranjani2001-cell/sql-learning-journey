@@ -1,0 +1,132 @@
+create database if not exists journey;
+use journey;
+create table busticketbooking(seat_id int auto_increment primary key,
+                              seat_type varchar(30),
+                              seat_price int);
+
+create table passengers(passenger_id int auto_increment primary key,
+                        passenger_name varchar(20),
+                        pas_drop varchar(20),
+                        phone varchar(15),
+                        seat_id int,
+                        foreign key(seat_id) references busticketbooking(seat_id));
+
+insert into busticketbooking(seat_type,seat_price) values
+('sleeping',1200),('sitting',500),('window sitting',650),('upper birth',1100),
+('sleeping',1200),('sleeping',1200),('sleeping',1200),('sitting',500),('sitting',500),
+('window sitting',650),('window sitting',650),('window sitting',650),('upper birth',1100),
+('upper birth',1100),('upper birth',1100);
+
+insert into passengers(passenger_name,pas_drop,phone,seat_id) values 
+('ram','kadapa',895773479,1),('sita','tpt',9095437768,4),('balu','rjpt',6737568577,3),
+('singh','madanapally',8745665735,8),('sunil','tpt',7659835773,6),
+('varun','tpt',867345478,11);
+
+select psngrs.passenger_name,btb.seat_type
+from passengers psngrs
+left join busticketbooking btb
+on btb.seat_id=psngrs.seat_id;
+
+select  psngrs.passenger_name, btb.seat_type
+from  passengers psngrs
+left join  busticketbooking btb ON psngrs.seat_id = btb.seat_id
+union 
+select  psngrs.passenger_name, btb.seat_type
+from  passengers psngrs
+right join busticketbooking btb ON psngrs.seat_id = btb.seat_id;
+
+
+select seat_type,sum(seat_price)
+from busticketbooking
+group by seat_type
+order by seat_type desc;
+
+select 
+psngrs.passenger_name,
+rank() over (order by btb.seat_price desc ) as seat_rank
+from passengers psngrs
+join busticketbooking btb
+on psngrs.seat_id=btb.seat_id;
+
+-- row_number() creates a unique character like rank() only
+select 
+    psngrs.passenger_name,
+    row_number() over (order by psngrs.passenger_name) as row_num
+from passengers psngrs;
+
+with ranked_seats as (
+    select 
+        psngrs.passenger_name,
+        btb.seat_type,
+        btb.seat_price,
+        rank() over (order by btb.seat_price desc) as seat_rank
+    from passengers psngrs
+    join  busticketbooking btb
+        ON psngrs.seat_id = btb.seat_id
+)
+select passenger_name, seat_type, seat_price, seat_rank
+from ranked_seats
+where seat_rank <= 3
+order by  seat_rank, passenger_name; 
+
+ -- query to generate a report: passenger_name, seat_type, price, and a category (High/Medium/Low).
+select 
+psngrs.passenger_name,btb.seat_type,btb.seat_price,
+case 
+when btb.seat_price > 1100 then 'high'
+when btb.seat_price > 700 then 'medium'
+else 'low'
+end as category_price
+from passengers psngrs
+join busticketbooking btb
+on psngrs.seat_id=btb.seat_id
+;
+-- Write a query to count how many passengers are from each pas_drop location.
+select 
+pas_drop,count(*) as passengers_count
+from passengers 
+group by pas_drop;
+
+-- Generate a report showing total revenue grouped by seat_type.
+select seat_type ,sum(seat_price) as total_revenu_seat_type
+from busticketbooking
+group by seat_type;
+
+-- Create a view that shows only 'sleeping' seats booked along with passenger names.
+create view sleeperpasngrs as 
+select 
+btb.seat_type, psngrs.passenger_name
+from busticketbooking btb
+join passengers psngrs
+on btb.seat_id=psngrs.seat_id
+where seat_type like'%sleep%';
+
+-- Write a procedure to insert a new passenger and assign a seat automatically if seat_id is available.
+delimiter //
+
+create procedure add_passenger( in p_passenger_name varchar(30))
+begin
+declare p_seat_id int;
+-- find an available seat (not yet taken)
+select btb.seat_id
+into p_seat_id
+from busticketbooking btb
+where btb.seat_id not in (select seat_id from passengers)
+limit 1;
+-- if a seat is available, insert passenger
+if p_seat_id is not null then 
+insert into passengers (passenger_name,seat_id)
+values (p_passenger_name,p_seat_id);
+else
+signal sqlstate '45000'
+set message_text ='no available seats';
+end if;
+end//
+
+delimiter ;
+
+ call add_passenger('ravi kumar');
+
+
+
+
